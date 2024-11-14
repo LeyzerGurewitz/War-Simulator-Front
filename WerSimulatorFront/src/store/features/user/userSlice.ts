@@ -14,49 +14,69 @@ interface AuthState {
 const initialState: AuthState = {
   user: null,
   token: localStorage.getItem('token') || null,
-  status: "idle",  
+  status: "idle",
   error: null,
 };
 
-
-
 export const loginUser = createAsyncThunk<IUser, LoginRegisterPayload, { rejectValue: string }>(
-  "user/loginUser", 
+  "user/loginUser",
   async ({ userName, password }, thunkAPI) => {
     try {
       const response = await axios.post(`${BASE_URL}/login`, { userName, password });
-      localStorage.setItem("token", response.data.user.token); 
-      return response.data.user; 
+      localStorage.setItem("token", response.data.user.token);
+      return response.data.user;
     } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message); 
+      const errorMessage = error.response?.data?.message || error.message;
+      return thunkAPI.rejectWithValue(errorMessage);
     }
   }
 );
 
 export const registerUser = createAsyncThunk<IUser, LoginRegisterPayload, { rejectValue: string }>(
-  "user/registerUser", 
+  "user/registerUser",
   async ({ userName, password, organization }, thunkAPI) => {
     try {
       const response = await axios.post(`${BASE_URL}/register`, { userName, password, organization });
-      localStorage.setItem("token", response.data.user.token); 
-      return response.data.user; 
+      localStorage.setItem("token", response.data.user.token);
+      return response.data.user;
     } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.message); 
+      // טיפול בשגיאה
+      const errorMessage = error.response?.data?.message || error.message;
+      return thunkAPI.rejectWithValue(errorMessage);
     }
   }
 );
 
-export const fetchUserByToken = createAsyncThunk<IUser, void, { rejectValue: string }>(
-  "auth/fetchUserByToken", 
+export const fetchUserByTokenAttack = createAsyncThunk(
+  "auth/fetchUserByTokenAttack",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/auth/user`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      const response = await axios.get(`${BASE_URL}/auth/user/attack`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       });
       return response.data.data;
     } catch (error: any) {
-      const message = error.response?.data?.message || "Failed to fetch user";
-      return rejectWithValue(message);
+      const errorMessage = error.response?.data?.message || "Failed to fetch user";
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+export const fetchUserByTokenDefense = createAsyncThunk(
+  "auth/fetchUserByTokenDefense",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/auth/user/defense`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Failed to fetch user";
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -67,13 +87,17 @@ const userSlice = createSlice({
   reducers: {
     logoutUser: (state) => {
       state.user = null;
+      state.token = null;
       state.status = "idle";
+      state.error = null;
       localStorage.removeItem("token");
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(loginUser.pending, (state) => { state.status = "loading"; })
+      .addCase(loginUser.pending, (state) => {
+        state.status = "loading";
+      })
       .addCase(loginUser.fulfilled, (state, action: PayloadAction<IUser>) => {
         state.status = "succeeded";
         state.user = action.payload;
@@ -82,7 +106,9 @@ const userSlice = createSlice({
         state.status = "failed";
         state.error = action.payload as string;
       })
-      .addCase(registerUser.pending, (state) => { state.status = "loading"; })
+      .addCase(registerUser.pending, (state) => {
+        state.status = "loading";
+      })
       .addCase(registerUser.fulfilled, (state, action: PayloadAction<IUser>) => {
         state.status = "succeeded";
         state.user = action.payload;
@@ -91,12 +117,25 @@ const userSlice = createSlice({
         state.status = "failed";
         state.error = action.payload as string;
       })
-      .addCase(fetchUserByToken.pending, (state) => { state.status = "loading"; })
-      .addCase(fetchUserByToken.fulfilled, (state, action: PayloadAction<IUser>) => {
-        state.user = action.payload;
-        state.status = "succeeded";
+      .addCase(fetchUserByTokenAttack.pending, (state) => {
+        state.status = "loading";
       })
-      .addCase(fetchUserByToken.rejected, (state, action) => {
+      .addCase(fetchUserByTokenAttack.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.user = action.payload;
+      })
+      .addCase(fetchUserByTokenAttack.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload as string;
+      })
+      .addCase(fetchUserByTokenDefense.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(fetchUserByTokenDefense.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.user = action.payload;
+      })
+      .addCase(fetchUserByTokenDefense.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
       });
