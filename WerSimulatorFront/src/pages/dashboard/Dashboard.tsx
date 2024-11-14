@@ -1,12 +1,14 @@
-// src/pages/dashboard/Dashboard.tsx
 import React, { useEffect, useState } from "react";
 import { sendMissileLaunch, connectSocket } from "../../socket/webSocket";
 
 const Dashboard: React.FC = () => {
   const [missileData, setMissileData] = useState("");
+  const [message, setMessage] = useState("");  // מצב לאחסון ההודעות
 
   useEffect(() => {
-    connectSocket();
+    connectSocket((msg: string) => {
+      setMessage(msg);  // עדכון ההודעה המתקבלת
+    });
   }, []);
 
   const handleLaunchMissile = () => {
@@ -16,13 +18,18 @@ const Dashboard: React.FC = () => {
   return (
     <div style={{ padding: "20px" }}>
       <h1>Defense Dashboard</h1>
-      <input
-        type="text"
-        placeholder="Enter missile target"
+      <select
         value={missileData}
         onChange={(e) => setMissileData(e.target.value)}
-      />
+      >
+        <option value="">בחר יעד</option>
+        <option value="Target1">יעד 1</option>
+        <option value="Target2">יעד 2</option>
+        <option value="Target3">יעד 3</option>
+        {/* אפשר להוסיף עוד אפשרויות כאן */}
+      </select>
       <button onClick={handleLaunchMissile}>Launch Missile</button>
+      <p>{message}</p> {/* הצגת ההודעה */}
     </div>
   );
 };
